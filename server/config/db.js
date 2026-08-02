@@ -1,5 +1,19 @@
 const mysql = require("mysql2");
+const fs = require("fs");
+const path = require("path");
 require("dotenv").config();
+
+// Aiven (and most managed MySQL hosts) require SSL with their own CA cert —
+// Node's default trusted certificate list won't recognize it. Download the
+// CA cert from your provider's dashboard and save it to server/certs/ca.pem,
+// then set DB_SSL=true in your environment variables.
+let sslConfig;
+if (process.env.DB_SSL === "true") {
+  const caPath = path.join(__dirname, "..", "certs", "ca.pem");
+  sslConfig = fs.existsSync(caPath)
+    ? { ca: fs.readFileSync(caPath) }
+    : { rejectUnauthorized: false }; // fallback if cert file isn't present — works, but skips cert validation
+}
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
@@ -9,9 +23,7 @@ const pool = mysql.createPool({
   port: process.env.DB_PORT || 3306,
   waitForConnections: true,
   connectionLimit: 10,
-  // Aiven (and most managed MySQL hosts) require SSL. Set DB_SSL=true in
-  // your deployment environment variables; leave unset for local MySQL.
-  ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: true } : undefined,
+  ssl: sslConfig,
 });
 
 module.exports = pool.promise();
