@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
 
+
 # Environment secrets — never commit real credentials
 .env
 .env.local
@@ -23,6 +24,6 @@ client/.vite/
 Thumbs.db
 .vscode/
 
-# NOTE: ml-service/model/waste_classifier.h5 is intentionally NOT excluded —
-# it needs to be committed so Render can deploy it. If it ever exceeds
-# ~100MB, use Git LFS instead of ignoring it: git lfs track "*.h5"
+
+node_modules
+dist
