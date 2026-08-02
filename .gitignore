@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Environment secrets — never commit real credentials
+.env
+.env.local
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Uploaded files — user-generated, shouldn't be in version control
+server/uploads/*
+!server/uploads/.gitkeep
+
+# Build output
+client/dist/
+client/.vite/
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+
+# NOTE: ml-service/model/waste_classifier.h5 is intentionally NOT excluded —
+# it needs to be committed so Render can deploy it. If it ever exceeds
+# ~100MB, use Git LFS instead of ignoring it: git lfs track "*.h5"
