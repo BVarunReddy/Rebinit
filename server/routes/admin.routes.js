@@ -1,0 +1,11 @@
+const express = require('express');
+const router = express.Router();
+const { verifyToken, requireRole } = require('../middleware/auth');
+const { getStats, getAllUsers, updateUserRole, getAllListings, deleteListing } = require('../controllers/admin.controller');
+router.use(verifyToken, requireRole('admin'));
+router.get('/stats', getStats);
+router.get('/users', getAllUsers);
+router.patch('/users/:id/role', updateUserRole);
+router.get('/listings', getAllListings);
+router.delete('/listings/:id', deleteListing);
+module.exports = router;

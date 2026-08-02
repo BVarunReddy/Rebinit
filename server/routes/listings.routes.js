@@ -1,0 +1,14 @@
+const express = require('express');
+const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const { verifyToken } = require('../middleware/auth');
+const { createListing, getAllListings, getMyListings, updateListingStatus, deleteListing } = require('../controllers/listings.controller');
+const storage = multer.diskStorage({ destination: (req, file, cb) => cb(null, 'uploads/'), filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname)) });
+const upload = multer({ storage });
+router.get('/', verifyToken, getAllListings);
+router.get('/my', verifyToken, getMyListings);
+router.post('/', verifyToken, upload.single('image'), createListing);
+router.patch('/:id/status', verifyToken, updateListingStatus);
+router.delete('/:id', verifyToken, deleteListing);
+module.exports = router;
