@@ -1,8 +1,7 @@
 const pool = require('../config/db');
 const axios = require('axios');
 const FormData = require('form-data');
-const fs = require('fs');
-const path = require('path');
+const { uploadBuffer } = require('../config/cloudinary');
 const { getWasteInfo } = require('../utils/wasteInfo');
 
 // POST /api/reports/preview — classify an image only, don't save anything or
@@ -19,7 +18,7 @@ async function previewReport(req, res) {
 
     try {
       const form = new FormData();
-      form.append('image', fs.createReadStream(req.file.path));
+      form.append('image', req.file.buffer, { filename: req.file.originalname });
 
       const mlRes = await axios.post(
         `${process.env.ML_SERVICE_URL}/classify`,
@@ -31,10 +30,6 @@ async function previewReport(req, res) {
     } catch (e) {
       console.log('ML service unavailable, using default:', e.response?.data || e.message);
     }
-
-    // Clean up the temp file — this was only for prediction, not a saved report.
-    // The real file gets re-uploaded and saved when the user actually submits.
-    fs.unlink(req.file.path, () => {});
 
     res.json({
       category,
@@ -50,7 +45,6 @@ async function createReport(req, res) {
   try {
     const { description, latitude, longitude, severity } = req.body;
     const userId = req.user.id;
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
     // This is a civic dumping report, not a personal recycling log — a
     // report with no location is useless to whoever has to clean it up.
@@ -58,13 +52,17 @@ async function createReport(req, res) {
       return res.status(400).json({ message: 'Location is required to report a dump site' });
     }
 
+    let imageUrl = null;
     let category = 'unknown';
     let confidence = 0;
 
     if (req.file) {
+      // Persistent storage — survives backend redeploys, unlike local disk
+      imageUrl = await uploadBuffer(req.file.buffer, 'rebinit/reports');
+
       try {
         const form = new FormData();
-        form.append('image', fs.createReadStream(req.file.path));
+        form.append('image', req.file.buffer, { filename: req.file.originalname });
 
         const mlRes = await axios.post(
           `${process.env.ML_SERVICE_URL}/classify`,

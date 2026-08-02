@@ -1,7 +1,7 @@
 const pool = require('../config/db');
 const axios = require('axios');
 const FormData = require('form-data');
-const fs = require('fs');
+const { uploadBuffer } = require('../config/cloudinary');
 const { getWasteInfo } = require('../utils/wasteInfo');
 
 // POST /api/recycling/preview — same idea as reports/preview: classify only,
@@ -17,15 +17,13 @@ async function previewRecycling(req, res) {
 
     try {
       const form = new FormData();
-      form.append('image', fs.createReadStream(req.file.path));
+      form.append('image', req.file.buffer, { filename: req.file.originalname });
       const mlRes = await axios.post(`${process.env.ML_SERVICE_URL}/classify`, form, { headers: form.getHeaders() });
       category = mlRes.data.category;
       confidence = mlRes.data.confidence;
     } catch (e) {
       console.log('ML service unavailable, using default:', e.response?.data || e.message);
     }
-
-    fs.unlink(req.file.path, () => {});
 
     res.json({ category, confidence, ...getWasteInfo(category) });
   } catch (err) {
@@ -39,15 +37,17 @@ async function previewRecycling(req, res) {
 async function createRecyclingEntry(req, res) {
   try {
     const userId = req.user.id;
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
-
+    let imageUrl = null;
     let category = 'unknown';
     let confidence = 0;
 
     if (req.file) {
+      // Persistent storage — survives backend redeploys, unlike local disk
+      imageUrl = await uploadBuffer(req.file.buffer, 'rebinit/recycling');
+
       try {
         const form = new FormData();
-        form.append('image', fs.createReadStream(req.file.path));
+        form.append('image', req.file.buffer, { filename: req.file.originalname });
         const mlRes = await axios.post(`${process.env.ML_SERVICE_URL}/classify`, form, { headers: form.getHeaders() });
         category = mlRes.data.category;
         confidence = mlRes.data.confidence;
